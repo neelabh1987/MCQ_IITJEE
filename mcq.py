@@ -2,6 +2,9 @@ import streamlit as st
 from llama_cpp import Llama
 import re
 
+# Set HF token in environment for transformers to use it automatically
+os.environ["HF_TOKEN"] = st.secrets["huggingface"]["token"]
+
 # Page config
 st.set_page_config(
     page_title="JEE MCQ Generator",
@@ -43,7 +46,7 @@ st.markdown("Get exam-style MCQs instantly based on your concept prompt.")
 # Load the GGUF model using llama_cpp
 @st.cache_resource(show_spinner="🚀 Loading Mistral-7B-Instruct GGUF model...")
 def load_model():
-    model_path = "path_to_your_gguf_model/Mistral-7B-Instruct-v0.1-GGUF.gguf"  # Set the correct path to the GGUF model
+    model_path = "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"  # Set the correct path to the GGUF model
     model = Llama(model_path)  # Load the model using llama_cpp
     return model
 
