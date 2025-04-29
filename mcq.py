@@ -1,5 +1,5 @@
-!pip install -q streamlit
-!pip install -q auto-gptq transformers accelerate
+!pip install streamlit
+!pip install auto-gptq transformers accelerate
 
 import streamlit as st
 from transformers import AutoTokenizer, pipeline, TextStreamer
