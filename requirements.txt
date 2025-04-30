@@ -1,5 +1,6 @@
 gunicorn
 streamlit
+huggingface-hub
 llama-cpp-python
 pandas
 numpy
