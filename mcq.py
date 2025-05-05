@@ -1,60 +1,115 @@
 import streamlit as st
-import requests
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import re
 
-# --- Updated Fireworks.ai API Configuration ---
-FIREWORKS_API_KEY = st.secrets["FIREWORKS_API_KEY"]
-API_URL = "https://api.fireworks.ai/inference/v1/chat/completions"  # Correct endpoint
-MODEL_NAME = "accounts/fireworks/models/mixtral-8x7b-instruct"  # Recommended model
+# Page config
+st.set_page_config(
+    page_title="JEE MCQ Generator",
+    page_icon="🧠",
+    layout="centered"
+)
 
-# --- Streamlit App ---
-st.set_page_config(page_title="JEE MCQ Generator", page_icon="🧠")
-st.title("🧠 JEE MCQ Generator v2.0")
-
-def generate_mcq(topic):
-    """Generate MCQ using Fireworks.ai's chat API"""
-    messages = [
-        {
-            "role": "system",
-            "content": "You are an expert JEE exam creator. Generate 1 MCQ with 4 options (a-d). No explanations."
-        },
-        {
-            "role": "user",
-            "content": f"Create a JEE-level MCQ about: {topic}\n\nFormat:\nQuestion: [Your question]\na) Option 1\nb) Option 2\nc) Option 3\nd) Option 4"
+# Custom CSS styling
+st.markdown("""
+    <style>
+        .main {background-color: #f4f6fa;}
+        .mcq-box {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            box-shadow: 0px 4px 12px rgba(0,0,0,0.1);
+            font-family: 'Segoe UI', sans-serif;
         }
+        .title {
+            color: #4a4a4a;
+            font-weight: 700;
+            font-size: 2rem;
+        }
+        .option {
+            margin-left: 15px;
+        }
+        .footer {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 30px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+# App title
+st.markdown("<div class='title'>🧠 JEE MCQ Generator</div>", unsafe_allow_html=True)
+st.markdown("Get exam-style MCQs instantly based on your concept prompt.")
+
+# Load the Llama-3-8B-Instruct model
+@st.cache_resource(show_spinner="🚀 Loading Llama-3.2-3B-Instruct model...")
+def load_model():
+    model_name = "meta-llama/Llama-3.2-3B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+    return model, tokenizer
+
+model, tokenizer = load_model()
+
+# Function to generate MCQ
+def generate_mcq(user_prompt):
+    system_prompt = "You are an expert JEE MCQ creator for Physics, Chemistry, and Mathematics."
+    user_message = f"""Create one MCQ based on this concept: {user_prompt}
+
+Rules:
+- Identify subject (Physics, Chemistry, Math)
+- Create one question based on it
+- Write four options (a), (b), (c), (d)
+- No explanations, no answers, no extra text
+- Clear, exam-style MCQ
+"""
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_message}
     ]
     
-    payload = {
-        "model": MODEL_NAME,
-        "messages": messages,
-        "temperature": 0.3,
-        "max_tokens": 256,
-        "top_p": 0.9
-    }
+    # Format the prompt for Llama 3 instruct model
+    prompt = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
     
-    try:
-        response = requests.post(
-            API_URL,
-            headers={"Authorization": f"Bearer {FIREWORKS_API_KEY}"},
-            json=payload,
-            timeout=30  # Added timeout
-        )
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"]
+    # Generate the response
+    inputs = tokenizer(prompt, return_tensors="pt")
+    outputs = model.generate(**inputs, max_new_tokens=256)
+    output = tokenizer.decode(outputs[0], skip_special_tokens=True)
     
-    except requests.exceptions.HTTPError as err:
-        st.error(f"HTTP Error: {err}\n\nAPI Response: {response.text}")
-    except Exception as err:
-        st.error(f"Unexpected error: {err}")
+    # Clean up the output
+    output = output.split("<|start_header_id|>assistant<|end_header_id|>")[-1].strip()
+    output = re.sub(r'Subject:\s*\w+\s*', '', output)
+    output = output.replace('\\n', '\n').replace('\n\n', '\n').strip()
 
-# --- UI Components ---
-with st.form("mcq_form"):
-    concept = st.text_area("Enter JEE concept:", height=100)
-    submitted = st.form_submit_button("Generate MCQ")
-    
-    if submitted and concept:
-        with st.spinner("Generating..."):
-            result = generate_mcq(concept)
-            if result:
-                st.success("### Generated MCQ")
-                st.markdown(result)
+    # Extracting question and options
+    question_match = re.search(r'(Question[:\s]*)?(.*?)(Options:|\(a\)|\(A\))', output, re.DOTALL)
+    question_text = question_match.group(2).strip() if question_match else ""
+
+    options = re.findall(r'\([a-dA-D]\)\s*(.*?)\s*(?=\([a-dA-D]\)|$)', output, re.DOTALL)
+
+    if question_text and len(options) >= 4:
+        formatted_lines = [f"**Question:** {question_text}", "\n**Options:**"]
+        for i, opt in enumerate(options[:4]):
+            formatted_lines.append(f"- ({chr(97+i)}) {opt.strip()}")
+        return '\n'.join(formatted_lines)
+    else:
+        return f"⚠️ Could not extract proper question and options.\n\n**Raw Output:**\n```\n{output}\n```"
+
+# Input section
+user_input = st.text_area("✍️ Enter concept prompt:", height=100, placeholder="e.g., Projectile motion and radius of curvature...")
+
+if st.button("🎯 Generate MCQ"):
+    if user_input.strip():
+        with st.spinner("Generating MCQ..."):
+            mcq = generate_mcq(user_input)
+        st.markdown(f"<div class='mcq-box'>{mcq}</div>", unsafe_allow_html=True)
+    else:
+        st.warning("Please enter a valid prompt to generate a question.")
+
+# Footer
+st.markdown("<div class='footer'>Model: meta-llama/Llama-3.2-3B-Instruct • Powered by HuggingFace + Streamlit</div>", unsafe_allow_html=True)
 
