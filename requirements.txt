@@ -1,6 +1,5 @@
-gunicorn
+
 streamlit
-huggingface-hub
-llama-cpp-python
+requests
 pandas
 numpy
