@@ -43,12 +43,17 @@ st.markdown("Get exam-style MCQs instantly based on your concept prompt.")
 # Load the Llama-3-8B-Instruct model
 @st.cache_resource(show_spinner="🚀 Loading Llama-3.2-3B-Instruct model...")
 def load_model():
-    model_name = "meta-llama/Llama-3.2-3B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(
+        "meta-llama/Meta-Llama-3-8B-Instruct",
+        token=st.secrets["HUGGINGFACE_TOKEN"]  # Add this line
+    )
+    model = AutoModelForCausalLM.from_pretrained(
+        "meta-llama/Meta-Llama-3-8B-Instruct",
+        token=st.secrets["HUGGINGFACE_TOKEN"],  # Add this line
+        torch_dtype=torch.float16,  # Optional: reduces memory usage
+        device_map="auto"
+    )
     return model, tokenizer
-
-model, tokenizer = load_model()
 
 # Function to generate MCQ
 def generate_mcq(user_prompt):
