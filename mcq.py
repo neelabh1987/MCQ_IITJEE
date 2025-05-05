@@ -1,55 +1,60 @@
 import streamlit as st
 import requests
 
-# --- Fireworks.ai API Setup (Updated) ---
-FIREWORKS_API_KEY = st.secrets["FIREWORKS_API_KEY"]  # Store in Streamlit secrets
-API_URL = "https://api.fireworks.ai/inference/v1/completions"  # Updated endpoint
-MODEL_NAME = "accounts/fireworks/models/mixtral-8x7b-instruct"  # Better alternative
+# --- Updated Fireworks.ai API Configuration ---
+FIREWORKS_API_KEY = st.secrets["FIREWORKS_API_KEY"]
+API_URL = "https://api.fireworks.ai/inference/v1/chat/completions"  # Correct endpoint
+MODEL_NAME = "accounts/fireworks/models/mixtral-8x7b-instruct"  # Recommended model
 
-# --- Streamlit UI ---
+# --- Streamlit App ---
 st.set_page_config(page_title="JEE MCQ Generator", page_icon="🧠")
-st.title("🧠 JEE MCQ Generator (Powered by Fireworks.ai)")
+st.title("🧠 JEE MCQ Generator v2.0")
 
-# --- Fixed Generation Function ---
-def generate_mcq(concept):
-    PROMPT = f"""Generate a JEE Advanced MCQ with these rules:
-1. Subject: Physics/Chemistry/Math
-2. Concept: {concept}
-3. Format:
-**Question:** [Clear question]
-**Options:**
-a) [Option 1]
-b) [Option 2]
-c) [Option 3]
-d) [Option 4]
-4. No explanations or answers"""
+def generate_mcq(topic):
+    """Generate MCQ using Fireworks.ai's chat API"""
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an expert JEE exam creator. Generate 1 MCQ with 4 options (a-d). No explanations."
+        },
+        {
+            "role": "user",
+            "content": f"Create a JEE-level MCQ about: {topic}\n\nFormat:\nQuestion: [Your question]\na) Option 1\nb) Option 2\nc) Option 3\nd) Option 4"
+        }
+    ]
     
     payload = {
         "model": MODEL_NAME,
-        "prompt": PROMPT,  # Changed from 'messages' to 'prompt'
-        "max_tokens": 300,
-        "temperature": 0.3  # Lower for more factual responses
+        "messages": messages,
+        "temperature": 0.3,
+        "max_tokens": 256,
+        "top_p": 0.9
     }
     
     try:
         response = requests.post(
             API_URL,
             headers={"Authorization": f"Bearer {FIREWORKS_API_KEY}"},
-            json=payload
+            json=payload,
+            timeout=30  # Added timeout
         )
         response.raise_for_status()
-        return response.json()["choices"][0]["text"]
+        return response.json()["choices"][0]["message"]["content"]
     
-    except Exception as e:
-        st.error(f"🚨 Error: {str(e)}")
-        st.json(response.json()) if response else None  # Debug
-        return None
+    except requests.exceptions.HTTPError as err:
+        st.error(f"HTTP Error: {err}\n\nAPI Response: {response.text}")
+    except Exception as err:
+        st.error(f"Unexpected error: {err}")
 
-# --- User Interface ---
-user_input = st.text_area("Enter JEE concept:", height=100)
-if st.button("Generate MCQ"):
-    if user_input:
+# --- UI Components ---
+with st.form("mcq_form"):
+    concept = st.text_area("Enter JEE concept:", height=100)
+    submitted = st.form_submit_button("Generate MCQ")
+    
+    if submitted and concept:
         with st.spinner("Generating..."):
-            result = generate_mcq(user_input)
-            st.markdown(result if result else "Failed to generate")
+            result = generate_mcq(concept)
+            if result:
+                st.success("### Generated MCQ")
+                st.markdown(result)
 
