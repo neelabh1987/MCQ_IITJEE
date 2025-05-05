@@ -1,4 +1,6 @@
 streamlit
+transformers
+accelerate
 huggingface-hub
 pandas
 numpy
