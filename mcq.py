@@ -53,7 +53,3 @@ if st.button("🎯 Generate MCQ"):
             except Exception as e:
                 st.error(f"Error: {str(e)}. Try again later.")
 
-
-# Footer
-st.markdown("<div class='footer'>Model: google/flan-t5-small • Powered by HuggingFace + Streamlit</div>", unsafe_allow_html=True)
-
