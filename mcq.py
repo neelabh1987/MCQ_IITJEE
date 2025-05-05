@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # --- Fireworks.ai API Setup ---
-FIREWORKS_API_KEY = "YOUR_API_KEY"  # Replace with your key
+FIREWORKS_API_KEY = "fw_3ZT4V28a35wZKEvjwdp216x3"  
 API_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 HEADERS = {
     "Authorization": f"Bearer {FIREWORKS_API_KEY}",
