@@ -1,6 +1,8 @@
 streamlit
 transformers
+torch
 accelerate
+sentencepiece
 huggingface-hub
 pandas
 numpy
