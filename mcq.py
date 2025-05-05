@@ -1,5 +1,9 @@
+import os
+os.environ["STREAMLIT_SERVER_ENABLE_FILE_WATCHER"] = "false"  # Add this line
+
 import streamlit as st
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 import re
 
 # Page config
